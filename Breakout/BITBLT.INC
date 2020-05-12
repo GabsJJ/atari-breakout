@@ -92,6 +92,7 @@
   ClassName     db "BreakoutClass",0
   AppName       db "Atari Breakout",0
 	EventStop     BOOL FALSE
+  char WPARAM   20h
 
 .const
 	IDM_TEST equ 1     
