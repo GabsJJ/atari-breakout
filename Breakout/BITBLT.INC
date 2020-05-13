@@ -44,6 +44,8 @@
   TopXY        PROTO :DWORD,:DWORD
   FillBuffer   PROTO :DWORD,:DWORD,:BYTE
   Paint_Proc   PROTO :DWORD,:DWORD
+  Blocos_Proc  PROTO :DWORD,:DWORD
+  Bola_Proc  PROTO :DWORD,:DWORD
 
   ;=============
   ; Local macros
@@ -86,7 +88,9 @@
 	hThread 	    dd 0
 	hEventStart   dd 0
   barraPos      POINT <>
-	flagPos 	    POINT <>
+  blocoPos      POINT <>
+  bolaPos       POINT <>
+  spriteAtual   dd 0
 	hThreadFlag	  dd 0
 	ThreadFlagID  dd 0
   ClassName     db "BreakoutClass",0
@@ -97,4 +101,3 @@
 .const
 	IDM_TEST equ 1     
 	WM_FINISH equ WM_USER+100h
-	WM_FLAG   equ WM_USER+101h

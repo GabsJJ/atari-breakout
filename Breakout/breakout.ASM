@@ -138,36 +138,23 @@ WndProc proc hWin   :DWORD,
     .elseif uMsg == WM_CREATE
 		mov barraPos.y, 490
 		mov barraPos.x, 200; 180
-		
-		mov flagPos.y, 80
-		mov flagPos.x, 100
+
+        mov bolaPos.x, 100
+        mov bolaPos.y, 300
 		
 		invoke CreateEvent,NULL,FALSE,FALSE,NULL
 		mov    hEventStart,eax
 		
-		;mov    eax,OFFSET ThreadProc
-		;invoke CreateThread,NULL,NULL,eax,\
-		;                    NULL,NORMAL_PRIORITY_CLASS,\
-		;                    ADDR ThreadID
-		;mov    hThread,eax
-
-		;mov    eax,OFFSET ThreadFlagProc
-		;invoke CreateThread,NULL,NULL,eax,\
-		;                   NULL,NORMAL_PRIORITY_CLASS,\
-		;                   ADDR ThreadFlagID
-		;mov    hThreadFlag,eax
+		mov    eax,OFFSET ThreadBolaProc
+		invoke CreateThread,NULL,NULL,eax,\
+		                    NULL,NORMAL_PRIORITY_CLASS,\
+		                    ADDR ThreadID
+		mov    hThread,eax
 		
     .elseif uMsg == WM_SIZE
 ;    // obter o tamanho da janela
     
     .elseif uMsg == WM_LBUTTONDOWN
-		mov eax,lParam
-		and eax,0ffffh
-		mov hitpoint.x,eax
-		mov eax,lParam
-		shr eax,16
-		mov hitpoint.y,eax
-		invoke InvalidateRect,hWnd,NULL,TRUE
 
     .elseif uMsg==WM_CHAR
         push wParam
@@ -180,29 +167,20 @@ WndProc proc hWin   :DWORD,
         
         invoke TextOut,hDC,0,0,ADDR barraPos.x,1
         
+        invoke Blocos_Proc,hWin,hDC
         invoke Paint_Proc,hWin,hDC
         invoke EndPaint,hWin,ADDR Ps
         return 0
    .elseif uMsg==WM_FINISH
-
-		sub barraPos.y, 1
+        ; QUANDO ATINGIR O BLOCO PROGRAMAR AQUI (QUANDO ATINGIR CHAMAR INVALIDRECT)
+		sub bolaPos.y, 1
 		
-		.if barraPos.y <= 0
-			mov barraPos.y,300
-			mov barraPos.x,100
+		.if bolaPos.y <= 0
+			mov bolaPos.y,20
+			mov bolaPos.x,20
 		.endif 
-		invoke InvalidateRect,hWnd,NULL,TRUE	
+		;invoke InvalidateRect,hWnd,NULL,TRUE
 
-	.elseif uMsg==WM_FLAG
-
-		inc flagPos.x
-		
-		.if flagPos.x > 800
-			mov flagPos.y,80
-			mov flagPos.x,0
-		.endif 
-;		invoke InvalidateRect,hWnd,NULL,TRUE	
-		
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
@@ -234,35 +212,30 @@ Paint_Proc proc hWin:DWORD, hDC:DWORD
 
     LOCAL hOld:DWORD
     LOCAL memDC :DWORD
-    LOCAL windowRect:RECT
  
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
     
 	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
     mov hOld, eax         
-    
-    invoke GetWindowRect, hWnd, ADDR windowRect
 
     .if char == 61h || char == 41h ;left
         .if barraPos.x != NULL
             sub barraPos.x, 20
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,448,32,32,CREF_TRANSPARENT
+            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .else
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,448,32,32,CREF_TRANSPARENT
+            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
     .elseif char == 64h || char == 44h ;right
         .if barraPos.x != 400
             add barraPos.x, 20
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,448,32,32,CREF_TRANSPARENT
+            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .else
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,448,32,32,CREF_TRANSPARENT
+            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
     .else ;n apertou nada
-        INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,448,32,32,CREF_TRANSPARENT
-    .endif
-
-    INVOKE  TransparentBlt,hDC,flagPos.x,flagPos.y,64,20,memDC,0,0,32,32,CREF_TRANSPARENT        
+        INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
+    .endif 
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
@@ -271,38 +244,70 @@ Paint_Proc proc hWin:DWORD, hDC:DWORD
 
 Paint_Proc endp
 
+Blocos_Proc proc hWin:DWORD, hDC:DWORD
+
+    LOCAL hOld:DWORD
+    LOCAL memDC :DWORD
+ 
+    invoke CreateCompatibleDC,hDC
+    mov memDC, eax
+    
+	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
+    mov hOld, eax
+
+    mov blocoPos.x, 0
+    mov blocoPos.y, 50
+    mov spriteAtual, 384
+    .WHILE blocoPos.y <= 110
+        .WHILE blocoPos.x <= 450
+            INVOKE  TransparentBlt,hDC,blocoPos.x,blocoPos.y,50,15,memDC,0,spriteAtual,32,32,CREF_TRANSPARENT
+            add blocoPos.x, 50
+        .ENDW
+        add blocoPos.y, 15
+        add spriteAtual, 32
+        mov blocoPos.x, 0
+    .ENDW
+
+    invoke SelectObject,hDC,hOld
+    invoke DeleteDC,memDC
+
+    return 0
+Blocos_Proc endp
+
+Bola_Proc proc hWin:DWORD, hDC:DWORD
+    LOCAL hOld:DWORD
+    LOCAL memDC :DWORD
+ 
+    invoke CreateCompatibleDC,hDC
+    mov memDC, eax
+    
+	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
+    mov hOld, eax
+
+    INVOKE  TransparentBlt,hDC,bolaPos.x,bolaPos.y,32,32,memDC,0,352,32,32,CREF_TRANSPARENT
+
+    invoke SelectObject,hDC,hOld
+    invoke DeleteDC,memDC
+
+    return 0
+Bola_Proc endp
 ; ########################################################################
 
-
-ThreadProc PROC USES ecx Param:DWORD
+ThreadBolaProc PROC USES ecx Param:DWORD
 
     invoke WaitForSingleObject,hEventStart,10 ;INFINITE
 
 	.IF eax == WAIT_TIMEOUT	
 	    invoke PostMessage,hWnd,WM_FINISH,NULL,NULL
-	    jmp   ThreadProc     
+	    jmp   ThreadBolaProc     
 	.ELSEIF eax == WAIT_OBJECT_0	
 	    invoke PostMessage,hWnd,WM_FINISH,NULL,NULL
-	    jmp   ThreadProc
+	    jmp   ThreadBolaProc
     .ENDIF
         
-    jmp   ThreadProc
+    jmp   ThreadBolaProc
         
     ret
-ThreadProc ENDP
-
-ThreadFlagProc PROC USES ecx Param:DWORD
-
-    invoke WaitForSingleObject,hEventStart,10 ;INFINITE
-
-	.IF eax == WAIT_TIMEOUT	
-	    invoke PostMessage,hWnd,WM_FLAG,NULL,NULL
-	    jmp   ThreadFlagProc     
-    .ENDIF
-        
-    jmp   ThreadFlagProc
-        
-    ret
-ThreadFlagProc ENDP
+ThreadBolaProc ENDP
 
 end start
