@@ -45,7 +45,7 @@
   FillBuffer   PROTO :DWORD,:DWORD,:BYTE
   Paint_Proc   PROTO :DWORD,:DWORD
   Blocos_Proc  PROTO :DWORD,:DWORD
-  Bola_Proc  PROTO :DWORD,:DWORD
+  Bola_Proc    PROTO :DWORD,:DWORD
 
   ;=============
   ; Local macros
@@ -83,19 +83,20 @@
   lRect         RECT <>
   hitpoint 	    POINT <>
   posicao       POINT <>
-  ThreadID 	    dd 0
+  ThreadBolaID 	dd 0
 	ExitCode 	    dd 0
-	hThread 	    dd 0
+	hThreadBola 	dd 0
 	hEventStart   dd 0
   barraPos      POINT <>
   blocoPos      POINT <>
   bolaPos       POINT <>
   spriteAtual   dd 0
-	hThreadFlag	  dd 0
-	ThreadFlagID  dd 0
+	hThreadBar    dd 0
+	ThreadBarID   dd 0
   ClassName     db "BreakoutClass",0
   AppName       db "Atari Breakout",0
 	EventStop     BOOL FALSE
+  movimento     dd 10
   char WPARAM   20h
 
 .const

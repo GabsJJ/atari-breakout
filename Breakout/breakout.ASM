@@ -139,8 +139,8 @@ WndProc proc hWin   :DWORD,
 		mov barraPos.y, 490
 		mov barraPos.x, 200; 180
 
-        mov bolaPos.x, 100
-        mov bolaPos.y, 300
+        mov bolaPos.x, 242
+        mov bolaPos.y, 500
 		
 		invoke CreateEvent,NULL,FALSE,FALSE,NULL
 		mov    hEventStart,eax
@@ -148,11 +148,11 @@ WndProc proc hWin   :DWORD,
 		mov    eax,OFFSET ThreadBolaProc
 		invoke CreateThread,NULL,NULL,eax,\
 		                    NULL,NORMAL_PRIORITY_CLASS,\
-		                    ADDR ThreadID
-		mov    hThread,eax
+		                    ADDR ThreadBolaID
+		mov    hThreadBola,eax
 		
     .elseif uMsg == WM_SIZE
-;    // obter o tamanho da janela
+    ;obter o tamanho da janela
     
     .elseif uMsg == WM_LBUTTONDOWN
 
@@ -165,22 +165,34 @@ WndProc proc hWin   :DWORD,
         invoke BeginPaint,hWin,ADDR Ps
         mov hDC, eax
         
-        invoke TextOut,hDC,0,0,ADDR barraPos.x,1
-        
         invoke Blocos_Proc,hWin,hDC
         invoke Paint_Proc,hWin,hDC
+        invoke Bola_Proc,hWin,hDC
         invoke EndPaint,hWin,ADDR Ps
         return 0
    .elseif uMsg==WM_FINISH
         ; QUANDO ATINGIR O BLOCO PROGRAMAR AQUI (QUANDO ATINGIR CHAMAR INVALIDRECT)
-		sub bolaPos.y, 1
-		
-		.if bolaPos.y <= 0
-			mov bolaPos.y,20
-			mov bolaPos.x,20
-		.endif 
-		;invoke InvalidateRect,hWnd,NULL,TRUE
+        mov eax, movimento
+        mov movimento, eax
+        sub bolaPos.y, eax
 
+		.if bolaPos.y == 0
+            push edi
+            mov eax, movimento
+            mov edi, -1
+            imul eax, edi
+            mov movimento, eax
+            pop edi
+		.endif 
+        .if bolaPos.y == 550
+            push edi
+            mov eax, movimento
+            mov edi, -1
+            imul eax, edi
+            mov movimento, eax
+            pop edi
+        .endif
+		invoke InvalidateRect,hWnd,NULL,TRUE
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
@@ -217,12 +229,13 @@ Paint_Proc proc hWin:DWORD, hDC:DWORD
     mov memDC, eax
     
 	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
-    mov hOld, eax         
+    mov hOld, eax    
 
     .if char == 61h || char == 41h ;left
         .if barraPos.x != NULL
             sub barraPos.x, 20
             INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
+            mov char, 20h
         .else
             INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
@@ -230,12 +243,14 @@ Paint_Proc proc hWin:DWORD, hDC:DWORD
         .if barraPos.x != 400
             add barraPos.x, 20
             INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
+            mov char, 20h
         .else
             INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
     .else ;n apertou nada
+        ;mov char, 20h
         INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
-    .endif 
+    .endif     
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
@@ -261,6 +276,7 @@ Blocos_Proc proc hWin:DWORD, hDC:DWORD
     .WHILE blocoPos.y <= 110
         .WHILE blocoPos.x <= 450
             INVOKE  TransparentBlt,hDC,blocoPos.x,blocoPos.y,50,15,memDC,0,spriteAtual,32,32,CREF_TRANSPARENT
+            ;salva na matrix o x e y dos blocos
             add blocoPos.x, 50
         .ENDW
         add blocoPos.y, 15
@@ -284,7 +300,7 @@ Bola_Proc proc hWin:DWORD, hDC:DWORD
 	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
     mov hOld, eax
 
-    INVOKE  TransparentBlt,hDC,bolaPos.x,bolaPos.y,32,32,memDC,0,352,32,32,CREF_TRANSPARENT
+    INVOKE  TransparentBlt,hDC,bolaPos.x,bolaPos.y,15,15,memDC,0,352,32,32,CREF_TRANSPARENT
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
@@ -295,8 +311,7 @@ Bola_Proc endp
 
 ThreadBolaProc PROC USES ecx Param:DWORD
 
-    invoke WaitForSingleObject,hEventStart,10 ;INFINITE
-
+    invoke WaitForSingleObject,hEventStart,40
 	.IF eax == WAIT_TIMEOUT	
 	    invoke PostMessage,hWnd,WM_FINISH,NULL,NULL
 	    jmp   ThreadBolaProc     
