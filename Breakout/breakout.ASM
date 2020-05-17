@@ -64,7 +64,7 @@ WinMain proc hInst     :DWORD,
     mov wc.cbClsExtra,     NULL
     mov wc.cbWndExtra,     NULL
     m2m wc.hInstance,      hInst
-    mov wc.hbrBackground,  COLOR_WINDOW+3
+    mov wc.hbrBackground,  COLOR_WINDOW+2  ;+3
     mov wc.lpszMenuName,   NULL   ;OFFSET MenuName
     mov wc.lpszClassName,  offset szClassName
     m2m wc.hIcon,          hIcon
@@ -130,6 +130,8 @@ WndProc proc hWin   :DWORD,
     LOCAL Rct    :RECT
     LOCAL hDC    :DWORD
     LOCAL Ps     :PAINTSTRUCT
+    LOCAL lpExit :DWORD
+    LOCAL rect:RECT
 
     .if uMsg == WM_COMMAND
     ;======== menu commands ========
@@ -150,15 +152,11 @@ WndProc proc hWin   :DWORD,
 		                    NULL,NORMAL_PRIORITY_CLASS,\
 		                    ADDR ThreadBolaID
 		mov    hThreadBola,eax
-		
-    .elseif uMsg == WM_SIZE
-    ;obter o tamanho da janela
     
-    .elseif uMsg == WM_LBUTTONDOWN
-
-    .elseif uMsg==WM_CHAR
-        push wParam
-        pop  char
+    .elseif uMsg == WM_MOUSEMOVE
+        mov eax,lParam
+    	and eax,0ffffh
+    	mov hitpoint.x,eax
         invoke InvalidateRect,hWnd,NULL,TRUE
 		
     .elseif uMsg == WM_PAINT
@@ -172,10 +170,28 @@ WndProc proc hWin   :DWORD,
         return 0
    .elseif uMsg==WM_FINISH
         ; QUANDO ATINGIR O BLOCO PROGRAMAR AQUI (QUANDO ATINGIR CHAMAR INVALIDRECT)
+        push edx
         mov eax, movimento
         mov movimento, eax
         sub bolaPos.y, eax
 
+        mov edx, movimento2
+        mov movimento2, edx
+        add bolaPos.x, edx
+
+        mov edi, bolaPos.x
+        invoke wsprintf, offset buffer, offset format, edi
+        invoke GetClientRect, hWin, ADDR rect
+        invoke DrawText, hDC, ADDR buffer, -1, ADDR rect, DT_BOTTOM
+
+        .if bolaPos.x >= 475
+            push edi
+            mov eax, movimento2
+            mov edi, -1
+            imul eax, edi
+            mov movimento2, eax
+            pop edi
+        .endif
 		.if bolaPos.y == 0
             push edi
             mov eax, movimento
@@ -184,7 +200,9 @@ WndProc proc hWin   :DWORD,
             mov movimento, eax
             pop edi
 		.endif 
-        .if bolaPos.y == 550
+        .if bolaPos.y == 600
+            mov bolaPos.x, 242
+            mov bolaPos.y, 500
             push edi
             mov eax, movimento
             mov edi, -1
@@ -192,6 +210,7 @@ WndProc proc hWin   :DWORD,
             mov movimento, eax
             pop edi
         .endif
+        pop edx
 		invoke InvalidateRect,hWnd,NULL,TRUE
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
@@ -231,26 +250,15 @@ Paint_Proc proc hWin:DWORD, hDC:DWORD
 	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
     mov hOld, eax    
 
-    .if char == 61h || char == 41h ;left
-        .if barraPos.x != NULL
-            sub barraPos.x, 20
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
-            mov char, 20h
-        .else
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
+        .if hitpoint.x != NULL
+            INVOKE  TransparentBlt,hDC,hitpoint.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
-    .elseif char == 64h || char == 44h ;right
-        .if barraPos.x != 400
-            add barraPos.x, 20
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
-            mov char, 20h
+        .if hitpoint.x <= 400
+            INVOKE  TransparentBlt,hDC,hitpoint.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .else
-            INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
+            INVOKE  TransparentBlt,hDC,400,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
         .endif
-    .else ;n apertou nada
-        ;mov char, 20h
-        INVOKE  TransparentBlt,hDC,barraPos.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT
-    .endif     
+        INVOKE  TransparentBlt,hDC,hitpoint.x,barraPos.y,100,15,memDC,0,352,32,32,CREF_TRANSPARENT    
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
@@ -261,8 +269,9 @@ Paint_Proc endp
 
 Blocos_Proc proc hWin:DWORD, hDC:DWORD
 
-    LOCAL hOld:DWORD
+    LOCAL hOld :DWORD
     LOCAL memDC :DWORD
+    LOCAL aux :DWORD
  
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
@@ -270,19 +279,35 @@ Blocos_Proc proc hWin:DWORD, hDC:DWORD
 	invoke SelectObject,memDC,hBmp2  ; selecionei o novo bitmap
     mov hOld, eax
 
+    push esi
+    push eax
+
+    mov esi, 0 ;indice do vetor de posiçoes x
     mov blocoPos.x, 0
     mov blocoPos.y, 50
     mov spriteAtual, 384
     .WHILE blocoPos.y <= 110
-        .WHILE blocoPos.x <= 450
-            INVOKE  TransparentBlt,hDC,blocoPos.x,blocoPos.y,50,15,memDC,0,spriteAtual,32,32,CREF_TRANSPARENT
-            ;salva na matrix o x e y dos blocos
-            add blocoPos.x, 50
+        .WHILE blocoPos.x <= 400
+            .IF blocos [esi].break == TRUE
+                INVOKE  TransparentBlt,hDC,blocoPos.x,blocoPos.y,100,15,memDC,0,spriteAtual,32,32,CREF_TRANSPARENT
+            .ENDIF
+
+            mov eax, blocoPos.x
+            mov blocos [esi].X, eax
+            
+            mov eax, blocoPos.y
+            mov blocos [esi].X, eax
+
+            add blocoPos.x, 100
+            add esi, TYPE BLOCO
         .ENDW
         add blocoPos.y, 15
         add spriteAtual, 32
         mov blocoPos.x, 0
     .ENDW
+
+    pop eax
+    pop esi
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC

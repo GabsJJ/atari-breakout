@@ -97,7 +97,31 @@
   AppName       db "Atari Breakout",0
 	EventStop     BOOL FALSE
   movimento     dd 10
-  char WPARAM   20h
+  movimento2    dd 10
+  char          WPARAM   20h
+
+  format        db 'posicao %d',0
+  buffer        db 20 dup(0)
+
+  MsgBoxCaption  db "Iczelion Tutorial No.2",0
+  MsgBoxText       db "Win32 Assembly is Great!",0
+
+  BLOCO struct ; STRUCT DE CADA BLOCO
+    X     DWORD ? 
+    Y     DWORD ?
+    break BOOL TRUE 
+  BLOCO ends
+  blocos      BLOCO 25 DUP(<>)
+  atingido      db "0", "0", "1", "0", "0",
+                   "1", "1", "1", "1", "1", 
+                   "1", "1", "1", "1", "1", 
+                   "1", "1", "1", "1", "1", 
+                   "1", "1", "1", "1", "1"   
+
+.data?
+  
+
+  
 
 .const
 	IDM_TEST equ 1     
