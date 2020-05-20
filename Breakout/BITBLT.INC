@@ -43,7 +43,7 @@
   WndProc      PROTO :DWORD,:DWORD,:DWORD,:DWORD
   TopXY        PROTO :DWORD,:DWORD
   FillBuffer   PROTO :DWORD,:DWORD,:BYTE
-  Paint_Proc   PROTO :DWORD,:DWORD
+  Barra_Proc   PROTO :DWORD,:DWORD
   Blocos_Proc  PROTO :DWORD,:DWORD
   Bola_Proc    PROTO :DWORD,:DWORD
 
@@ -70,35 +70,31 @@
 
 .data
   szDisplayName db "Atari Breakout",0
+  ClassName     db "BreakoutClass",0
+  AppName       db "Atari Breakout",0
   CommandLine   dd 0
   hWnd          dd 0
   hInstance     dd 0
   hIcon         dd 0
   hBmp          dd 0
   hBmp2         dd 0
-  memDC2        DWORD 0 
-  x	 		        dd 0
-  trasp		      dd  0
-  achou		      dd  0
-  lRect         RECT <>
-  hitpoint 	    POINT <>
-  posicao       POINT <>
   ThreadBolaID 	dd 0
+  ThreadBarID   dd 0
 	ExitCode 	    dd 0
 	hThreadBola 	dd 0
+  hThreadBar    dd 0
 	hEventStart   dd 0
+  spriteAtual   dd 0
+  movimentoY    dd 10
+  movimentoX    dd 10
+  ballcenterx   dd 0
+  barracenterx  dd 0
+  EventStop     BOOL FALSE
+  barraPosMouse POINT <>
   barraPos      POINT <>
   blocoPos      POINT <>
   bolaPos       POINT <>
-  spriteAtual   dd 0
-	hThreadBar    dd 0
-	ThreadBarID   dd 0
-  ClassName     db "BreakoutClass",0
-  AppName       db "Atari Breakout",0
-	EventStop     BOOL FALSE
-  movimento     dd 10
-  movimento2    dd 10
-  char          WPARAM   20h
+  lRect         RECT <>
 
   format        db 'posicao %d',0
   buffer        db 20 dup(0)
@@ -118,11 +114,9 @@
                    "1", "1", "1", "1", "1", 
                    "1", "1", "1", "1", "1"   
 
-.data?
-  
-
-  
-
 .const
-	IDM_TEST equ 1     
-	WM_FINISH equ WM_USER+100h
+	IDM_TEST          EQU 1     
+	WM_COLLISION      EQU WM_USER+100h
+  b2			          EQU 111
+	CREF_TRANSPARENT  EQU 0FF00FFh
+	CREF_TRANSPARENT2 EQU 0FF0000h
