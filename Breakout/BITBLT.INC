@@ -69,6 +69,11 @@
   ENDM
 
 .data
+  POINTSI STRUCT
+    x  SDWORD ?
+    y  SDWORD ?
+  POINTSI ENDS
+
   szDisplayName db "Atari Breakout",0
   ClassName     db "BreakoutClass",0
   AppName       db "Atari Breakout",0
@@ -79,28 +84,28 @@
   hBmp          dd 0
   hBmp2         dd 0
   ThreadBolaID 	dd 0
-  ThreadBarID   dd 0
 	ExitCode 	    dd 0
 	hThreadBola 	dd 0
-  hThreadBar    dd 0
 	hEventStart   dd 0
-  spriteAtual   dd 0
-  movimentoY    dd 10
-  movimentoX    dd 10
-  ballcenterx   dd 0
-  barracenterx  dd 0
-  EventStop     BOOL FALSE
-  barraPosMouse POINT <>
-  barraPos      POINT <>
-  blocoPos      POINT <>
-  bolaPos       POINT <>
-  lRect         RECT <>
+  spriteAtual   dd      0
+  movimentoY    dd      10
+  movimentoX    dd      10
+  direcaoX      SDWORD  10
+  direcaoY      SDWORD  10
+  ballcenterx   dd      0
+  barracenterx  dd      0
+  EventStop     BOOL    FALSE
+  barraPosMouse POINT   <>
+  barraPos      POINT   <>
+  blocoPos      POINT   <>
+  bolaPos       POINTSI <>
+  lRect         RECT    <>
 
   format        db 'posicao %d',0
   buffer        db 20 dup(0)
 
   MsgBoxCaption  db "Iczelion Tutorial No.2",0
-  MsgBoxText       db "Win32 Assembly is Great!",0
+  MsgBoxText     db "Win32 Assembly is Great!",0
 
   BLOCO struct ; STRUCT DE CADA BLOCO
     X     DWORD ? 
@@ -117,6 +122,7 @@
 .const
 	IDM_TEST          EQU 1     
 	WM_COLLISION      EQU WM_USER+100h
+  WM_BOLA_BLOCO     EQU WM_USER+101h
   b2			          EQU 111
 	CREF_TRANSPARENT  EQU 0FF00FFh
 	CREF_TRANSPARENT2 EQU 0FF0000h

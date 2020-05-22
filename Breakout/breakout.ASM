@@ -122,6 +122,9 @@ WndProc proc hWin   :DWORD,
         mov eax,lParam
     	and eax,0ffffh
     	mov barraPosMouse.x, eax
+        mov ebx, barraPosMouse.x
+        mov barracenterx, ebx
+        add barracenterx, 50
         invoke InvalidateRect,hWnd,NULL,FALSE ;a flag esta como false já que na tread o fundo é redesenhado
 		
     .elseif uMsg == WM_PAINT
@@ -139,57 +142,49 @@ WndProc proc hWin   :DWORD,
         push edi
         push ebx
 
-        mov eax, movimentoY
+        mov eax, direcaoY
         sub bolaPos.y, eax
-
-        mov eax, movimentoX
+        
+        mov eax, direcaoX
         add bolaPos.x, eax
 
-        ;mov edi, bolaPos.x
-        ;invoke wsprintf, offset buffer, offset format, edi
-        ;invoke GetClientRect, hWin, ADDR rect
-        ;invoke DrawText, hDC, ADDR buffer, -1, ADDR rect, DT_BOTTOM
+        mov edi, bolaPos.x
+        invoke wsprintf, offset buffer, offset format, edi
+        invoke GetClientRect, hWin, ADDR rect
+        invoke DrawText, hDC, ADDR buffer, -1, ADDR rect, DT_BOTTOM
 
         ;#########################################################################
         ;COLISÃO COM AS BORDAS DA TELA
 
-        .if bolaPos.x >= 475
-            push edi
+        mov edi, bolaPos.x
+        add edi, 25
+        .if bolaPos.x < 0   ;verifica se o x é negativo pegando o ponteiro SDWORD do valor
             mov eax, movimentoX
-            mov edi, -1
-            imul eax, edi
-            mov movimentoX, eax
-            pop edi
+            mov direcaoX, eax
+        .elseif edi > 500
+            mov eax, movimentoX
+            neg eax
+            mov direcaoX, eax
         .endif
-		.if bolaPos.y <= 10
-            push edi
+        
+		.if SDWORD ptr bolaPos.y < 0
             mov eax, movimentoY
-            mov edi, -1
-            imul eax, edi
-            mov movimentoY, eax
-            pop edi
-		.endif 
-        .if bolaPos.y >= 600
+            neg eax
+            mov direcaoY, eax
+        .elseif bolaPos.y >= 600
             mov bolaPos.x, 242
             mov bolaPos.y, 470
-            push edi
+
             mov eax, movimentoY
-            mov edi, -1
-            imul eax, edi
-            mov movimentoY, eax
-            pop edi
+            mov direcaoY, eax
         .endif
 
         ;#########################################################################
         ;COLISÃO COM A BARRA
 
         mov edi, bolaPos.x
+        mov ballcenterx, edi
         add ballcenterx, 8
-        add ballcenterx, edi
-
-        mov ebx, barraPosMouse.x
-        add barracenterx, 50
-        add barracenterx, ebx
 
         xor eax, eax
         mov eax, bolaPos.x ; bolaPos.x + 16
@@ -208,29 +203,66 @@ WndProc proc hWin   :DWORD,
                     add eax, 16
                     .if bolaPos.y < eax
                         xor eax, eax
-                        ;invoke MessageBox, NULL, addr MsgBoxText, addr MsgBoxCaption, MB_OK
-
                         mov ebx, barracenterx
-                        mov edi, barraPos.x
-                        .if bolaPos.x < ebx && ballcenterx != ebx
+                        .if ballcenterx < ebx
                             mov eax, movimentoX
-                            mov edi, -1
-                            imul eax, edi
-                            mov movimentoX, eax
+                            neg eax
+                            mov direcaoX, eax
+                        .else
+                            mov eax, movimentoX
+                            mov direcaoX, eax
                         .endif
+
                         mov eax, movimentoY
-                        mov edi, -1
-                        imul eax, edi
-                        mov movimentoY, eax
+                        mov direcaoY, eax
                     .endif
                 .endif
             .endif
         .endif
+
+        ;#########################################################################
+        ;COLISÃO BOLA-BLOCO
+
+        mov bl, 0
+        mov esi, 0
+        .WHILE bl < 25
+            .if blocos[esi].break != FALSE
+                xor eax, eax
+                mov eax, bolaPos.x ; bolaPos.x + 16
+                add eax, 16
+                .if eax > blocos[esi].X
+                    xor eax, eax
+                    mov eax, blocos[esi].X ; blocoPos.x + 100
+                    add eax, 100
+                    .if bolaPos.x < eax
+                        xor eax, eax
+                        mov eax, bolaPos.y ;bolaPos.y + 16
+                        add eax, 16
+                        .if eax > blocos[esi].Y
+                            xor eax, eax
+                            mov eax, blocos[esi].Y ; blocoPos.y + 16
+                            add eax, 16
+                            .if bolaPos.y < eax
+                                ;xor eax, eax
+                                mov blocos[esi].break, FALSE
+                                ;invoke PostMessage,hWnd,WM_BOLA_BLOCO,NULL,NULL
+                                ;invoke InvalidateRect,hWnd,NULL,TRUE
+                                
+                            .endif
+                        .endif
+                    .endif
+                .endif
+                add esi, TYPE BLOCO ;vai pro proximo bloco
+                add bl, 1
+            .endif
+        .ENDW
         pop ebx
         pop edi
         pop eax
         pop edx
 		invoke InvalidateRect,hWnd,NULL,TRUE
+    .elseif uMsg == WM_BOLA_BLOCO
+        invoke MessageBox, NULL, addr MsgBoxText, addr MsgBoxCaption, MB_OK
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
@@ -312,7 +344,7 @@ Blocos_Proc proc hWin:DWORD, hDC:DWORD
             mov blocos [esi].X, eax
             
             mov eax, blocoPos.y
-            mov blocos [esi].X, eax
+            mov blocos [esi].Y, eax
 
             add blocoPos.x, 100
             add esi, TYPE BLOCO
