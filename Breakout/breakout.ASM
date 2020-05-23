@@ -93,32 +93,38 @@ WinMain endp
 
 ; #########################################################################
 
-WndProc proc hWin   :DWORD,
-             uMsg   :DWORD,
-             wParam :DWORD,
-             lParam :DWORD
+WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
 
-    LOCAL hDC    :DWORD
-    LOCAL Ps     :PAINTSTRUCT
-    LOCAL rect   :RECT
+    LOCAL hDC      :DWORD
+    LOCAL Ps       :PAINTSTRUCT
+    LOCAL rect     :RECT
 	 
     .if uMsg == WM_CREATE
 		mov barraPos.y, 490
 		mov barraPos.x, 200
 
         mov bolaPos.x, 242
-        mov bolaPos.y, 475
+        mov bolaPos.y, 150
 		
-		invoke CreateEvent,NULL,FALSE,FALSE,NULL
+		invoke CreateEvent,NULL,FALSE,TRUE,NULL
 		mov    hEventStart,eax
-		
+        invoke SetEvent,hEventStart
+
 		mov    eax,OFFSET ThreadBolaProc
 		invoke CreateThread,NULL,NULL,eax,\
-		                    NULL,NORMAL_PRIORITY_CLASS,\
+		                    NULL,0,\
 		                    ADDR ThreadBolaID
 		mov    hThreadBola,eax
+
+        mov    eax,OFFSET ThreadCollidProc
+		invoke CreateThread,NULL,NULL,eax,\
+		                    NULL,0,\
+		                    ADDR ThreadCollidID
+		mov    hThreadCollid,eax
     
     .elseif uMsg == WM_MOUSEMOVE
+        push eax
+        push ebx
         mov eax,lParam
     	and eax,0ffffh
     	mov barraPosMouse.x, eax
@@ -126,8 +132,11 @@ WndProc proc hWin   :DWORD,
         mov barracenterx, ebx
         add barracenterx, 50
         invoke InvalidateRect,hWnd,NULL,FALSE ;a flag esta como false já que na tread o fundo é redesenhado
-		
+        pop ebx
+        pop eax
+		ret 
     .elseif uMsg == WM_PAINT
+        push eax
         invoke BeginPaint,hWin,ADDR Ps
         mov hDC, eax
         
@@ -135,23 +144,20 @@ WndProc proc hWin   :DWORD,
         invoke Barra_Proc,hWin,hDC
         invoke Bola_Proc,hWin,hDC
         invoke EndPaint,hWin,ADDR Ps
-        return 0
+        pop eax
+        ret
    .elseif uMsg==WM_COLLISION
         push edx
         push eax
         push edi
         push ebx
-
+        push ecx
+        
         mov eax, direcaoY
         sub bolaPos.y, eax
         
         mov eax, direcaoX
         add bolaPos.x, eax
-
-        mov edi, bolaPos.x
-        invoke wsprintf, offset buffer, offset format, edi
-        invoke GetClientRect, hWin, ADDR rect
-        invoke DrawText, hDC, ADDR buffer, -1, ADDR rect, DT_BOTTOM
 
         ;#########################################################################
         ;COLISÃO COM AS BORDAS DA TELA
@@ -167,14 +173,13 @@ WndProc proc hWin   :DWORD,
             mov direcaoX, eax
         .endif
         
+        mov edi, bolaPos.y
+        add edi, 45
 		.if SDWORD ptr bolaPos.y < 0
             mov eax, movimentoY
             neg eax
             mov direcaoY, eax
-        .elseif bolaPos.y >= 600
-            mov bolaPos.x, 242
-            mov bolaPos.y, 470
-
+        .elseif edi > 600
             mov eax, movimentoY
             mov direcaoY, eax
         .endif
@@ -219,50 +224,14 @@ WndProc proc hWin   :DWORD,
                 .endif
             .endif
         .endif
-
-        ;#########################################################################
-        ;COLISÃO BOLA-BLOCO
-
-        mov bl, 0
-        mov esi, 0
-        .WHILE bl < 25
-            .if blocos[esi].break != FALSE
-                xor eax, eax
-                mov eax, bolaPos.x ; bolaPos.x + 16
-                add eax, 16
-                .if eax > blocos[esi].X
-                    xor eax, eax
-                    mov eax, blocos[esi].X ; blocoPos.x + 100
-                    add eax, 100
-                    .if bolaPos.x < eax
-                        xor eax, eax
-                        mov eax, bolaPos.y ;bolaPos.y + 16
-                        add eax, 16
-                        .if eax > blocos[esi].Y
-                            xor eax, eax
-                            mov eax, blocos[esi].Y ; blocoPos.y + 16
-                            add eax, 16
-                            .if bolaPos.y < eax
-                                ;xor eax, eax
-                                mov blocos[esi].break, FALSE
-                                ;invoke PostMessage,hWnd,WM_BOLA_BLOCO,NULL,NULL
-                                ;invoke InvalidateRect,hWnd,NULL,TRUE
-                                
-                            .endif
-                        .endif
-                    .endif
-                .endif
-                add esi, TYPE BLOCO ;vai pro proximo bloco
-                add bl, 1
-            .endif
-        .ENDW
-        pop ebx
-        pop edi
         pop eax
+        pop edi
+        pop ebx
+        pop ecx
         pop edx
 		invoke InvalidateRect,hWnd,NULL,TRUE
     .elseif uMsg == WM_BOLA_BLOCO
-        invoke MessageBox, NULL, addr MsgBoxText, addr MsgBoxCaption, MB_OK
+        
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
@@ -294,6 +263,7 @@ Barra_Proc proc hWin:DWORD, hDC:DWORD
 
     LOCAL hOld:DWORD
     LOCAL memDC :DWORD
+    push eax
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
 	invoke SelectObject,memDC,hBmp2
@@ -310,8 +280,8 @@ Barra_Proc proc hWin:DWORD, hDC:DWORD
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
-
-    return 0
+    pop eax
+    ret
 
 Barra_Proc endp
 
@@ -321,7 +291,6 @@ Blocos_Proc proc hWin:DWORD, hDC:DWORD
 
     LOCAL hOld :DWORD
     LOCAL memDC :DWORD
-    LOCAL aux :DWORD
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
 	invoke SelectObject,memDC,hBmp2
@@ -397,8 +366,183 @@ ThreadBolaProc PROC USES ecx Param:DWORD
     .ENDIF
         
     jmp   ThreadBolaProc
-        
     ret
 ThreadBolaProc ENDP
+
+; ########################################################################
+
+ThreadCollidProc PROC USES ecx Param:DWORD
+    LOCAL overL    : SDWORD
+    LOCAL overR    : SDWORD
+    LOCAL overT    : SDWORD
+    LOCAL overB    : SDWORD
+    LOCAL minOverX : SDWORD
+    LOCAL minOverY : SDWORD
+    invoke WaitForSingleObject, hEventStart, 40
+
+    push edx
+    push eax
+    push edi
+    push ebx
+    push ecx
+
+    ;#########################################################################
+    ;COLISÃO BOLA-BLOCO
+
+    mov bl, 0
+    mov esi, 0
+    .WHILE bl < 25
+        .if blocos[esi].break == TRUE
+            xor eax, eax
+            mov eax, bolaPos.x ; bolaPos.x + 16
+            add eax, 16
+            .if eax > blocos[esi].X
+                xor eax, eax
+                mov eax, blocos[esi].X ; blocoPos.x + 100
+                add eax, 100
+                .if bolaPos.x < eax
+                    xor eax, eax
+                    mov eax, bolaPos.y ;bolaPos.y + 16
+                    add eax, 16
+                    .if eax > blocos[esi].Y
+                        xor eax, eax
+                        xor edx, edx
+                        mov eax, blocos[esi].Y ; blocoPos.y + 16
+                        add eax, 16
+                        .if bolaPos.y < eax
+                            mov blocos[esi].break, FALSE
+                            ;overL = bola.right - bloco.left
+                            mov eax, bolaPos.x
+                            add eax, 16
+                            sub eax, blocos[esi].X
+                            mov overL, SDWORD PTR eax
+                            ;overR = bloco.right - bola.left
+                            mov eax, blocos[esi].X
+                            add eax, 100
+                            sub eax, bolaPos.x
+                            mov overR, SDWORD PTR eax
+                            ;overT = bola.bottom - bloco.top
+                            mov eax, bolaPos.y
+                            add eax, 16
+                            sub eax, blocos[esi].Y
+                            mov overT, SDWORD PTR eax
+                            ;overB = bloco.bottom - bola.top
+                            mov eax, blocos[esi].Y
+                            add eax, 16
+                            sub eax, bolaPos.y
+                            mov overB, SDWORD PTR eax
+                            
+                            ; bool ballFromLeft(abs(overlapLeft) < abs(overlapRight));
+                            ; float minOverlapX{ballFromLeft ? overlapLeft : overlapRight};
+                            mov eax, overL
+                            mov edx, overR
+                            .if SDWORD PTR eax < 0
+                                neg eax
+                            .endif
+                            .if SDWORD PTR edx < 0
+                                neg edx
+                            .endif
+                            .if eax < edx
+                                mov eax, overL
+                                mov minOverX, SDWORD PTR eax
+                            .else 
+                                mov eax, overR
+                                mov minOverX, SDWORD PTR eax
+                            .endif
+
+                            ; bool ballFromTop(abs(overlapTop) < abs(overlapBottom));
+                            ; float minOverlapY{ballFromTop ? overlapTop : overlapBottom};
+                            mov eax, overT
+                            mov edx, overB
+                            .if SDWORD PTR eax < 0
+                                neg eax
+                            .endif
+                            .if SDWORD PTR edx < 0
+                                neg edx
+                            .endif
+                            .if eax < edx
+                                mov eax, overT
+                                mov minOverY, eax
+                            .else 
+                                mov eax, overB
+                                mov minOverY, eax
+                            .endif
+
+                            mov eax, minOverX
+                            mov edx, minOverY
+                            .if SDWORD PTR eax < 0
+                                neg eax
+                            .endif
+                            .if SDWORD PTR edx < 0
+                                neg edx
+                            .endif
+                            .if eax < edx
+                                mov eax, overL
+                                mov edx, overR
+                                .if SDWORD PTR eax < 0
+                                    neg eax
+                                .endif
+                                .if SDWORD PTR edx < 0
+                                    neg edx
+                                .endif
+                                .if eax < edx
+                                    mov eax, movimentoX
+                                    neg eax
+                                    mov direcaoX, eax
+                                .else 
+                                    mov eax, movimentoX
+                                    mov direcaoX, eax
+                                .endif
+                            .else
+                                mov eax, overT
+                                mov edx, overB
+                                .if SDWORD PTR eax < 0
+                                    neg eax
+                                .endif
+                                .if SDWORD PTR edx < 0
+                                    neg edx
+                                .endif
+                                .if eax < edx
+                                    mov eax, movimentoY
+                                    mov direcaoY, eax
+                                .else 
+                                    mov eax, movimentoY
+                                    neg eax
+                                    mov direcaoY, eax
+                                .endif
+                            .endif
+                        .endif
+                    .endif
+                .endif
+            .endif
+        .endif
+        add esi, TYPE BLOCO ;vai pro proximo bloco
+        add bl, 1
+        invoke InvalidateRect,hWnd,NULL,FALSE
+    .ENDW 
+
+    mov bl, 0
+    mov esi, 0
+    .WHILE bl < 25
+        add esi, TYPE BLOCO ;vai pro proximo bloco
+        add bl, 1
+    .ENDW
+    
+    pop eax
+    pop edi
+    pop ebx
+    pop ecx
+    pop edx
+        
+    jmp   ThreadCollidProc
+    ret
+ThreadCollidProc ENDP
+
+Restaura_Blo hWin:DWORD, hDC:DWORD
+    ;push ebx
+    ;push esi
+
+    ;.WHILE
+Restaura_Blo ENDP
 
 end start

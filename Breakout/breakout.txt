@@ -2,7 +2,7 @@ https://www.codeproject.com/Articles/79943/Breakout-Game-in-a-Win32-Console
 https://rembound.com/articles/the-breakout-tutorial-with-cpp-and-sdl-2
 https://www.youtube.com/watch?v=U7vSIvLLZi0
 
-https://github.com/SuperV1234/Tutorials/blob/master/DiveIntoC%2B%2B11/1_Arkanoid/p6.cpp
+https://github.com/SuperV1234/Tutorials/blob/master/DiveIntoC%2B%2B11/1_Arkanoid/p8.cpp
 https://www.youtube.com/watch?v=_4K3tsKa1Uc
 
 http://www.asmcommunity.net/forums/topic/?id=21694
