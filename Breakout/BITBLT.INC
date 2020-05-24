@@ -46,6 +46,7 @@
   Barra_Proc   PROTO :DWORD,:DWORD
   Blocos_Proc  PROTO :DWORD,:DWORD
   Bola_Proc    PROTO :DWORD,:DWORD
+  Restaura_Blo PROTO :DWORD,:DWORD
 
   ;=============
   ; Local macros
@@ -84,14 +85,17 @@
   hBmp          dd 0
   hBmp2         dd 0
   ThreadBolaID 	dd 0
+  ThreadCollidID dd 0
 	ExitCode 	    dd 0
 	hThreadBola 	dd 0
+  hThreadCollid dd 0
 	hEventStart   dd 0
+  hEvent2Start  dd 0
   spriteAtual   dd      0
   movimentoY    dd      10
   movimentoX    dd      10
   direcaoX      SDWORD  10
-  direcaoY      SDWORD  10
+  direcaoY      SDWORD  -10
   ballcenterx   dd      0
   barracenterx  dd      0
   EventStop     BOOL    FALSE
@@ -101,8 +105,8 @@
   bolaPos       POINTSI <>
   lRect         RECT    <>
 
-  format        db 'posicao %d',0
-  buffer        db 20 dup(0)
+  teste SDWORD 2
+  t3    SDWORD 5
 
   MsgBoxCaption  db "Iczelion Tutorial No.2",0
   MsgBoxText     db "Win32 Assembly is Great!",0
@@ -112,12 +116,7 @@
     Y     DWORD ?
     break BOOL TRUE 
   BLOCO ends
-  blocos      BLOCO 25 DUP(<>)
-  atingido      db "0", "0", "1", "0", "0",
-                   "1", "1", "1", "1", "1", 
-                   "1", "1", "1", "1", "1", 
-                   "1", "1", "1", "1", "1", 
-                   "1", "1", "1", "1", "1"   
+  blocos      BLOCO 25 DUP(<>) 
 
 .const
 	IDM_TEST          EQU 1     
