@@ -77,6 +77,7 @@ WinMain proc hInst     :DWORD,
 
     invoke ShowWindow,hWnd,SW_SHOWNORMAL
     invoke UpdateWindow,hWnd
+    invoke StartDSound,hWnd,2,44100,16
 
     StartLoop:
       invoke GetMessage,ADDR msg,NULL,0,0
@@ -139,7 +140,7 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
         push eax
         invoke BeginPaint,hWin,ADDR Ps
         mov hDC, eax
-        
+
         invoke Blocos_Proc,hWin,hDC
         invoke Barra_Proc,hWin,hDC
         invoke Bola_Proc,hWin,hDC
@@ -153,6 +154,7 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
         push ebx
         push ecx
         
+        ;soma as direções de x e y da bola para movimentar esta
         mov eax, direcaoY
         sub bolaPos.y, eax
         
@@ -164,10 +166,12 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
 
         mov edi, bolaPos.x
         add edi, 25
-        .if bolaPos.x < 0   ;verifica se o x é negativo pegando o ponteiro SDWORD do valor
+        .if bolaPos.x < 10   ;verifica se o x é negativo pegando o ponteiro SDWORD do valor
+            call Parede
             mov eax, movimentoX
             mov direcaoX, eax
         .elseif edi > 500
+            call Parede
             mov eax, movimentoX
             neg eax
             mov direcaoX, eax
@@ -179,9 +183,11 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
             mov eax, movimentoY
             neg eax
             mov direcaoY, eax
+            call Parede
         .elseif edi > 600
             mov eax, movimentoY
             mov direcaoY, eax
+            call Parede
         .endif
 
         ;#########################################################################
@@ -207,8 +213,11 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
                     mov eax, barraPos.y ; barraPos.y + 16
                     add eax, 16
                     .if bolaPos.y < eax
+                        call Paddle
                         xor eax, eax
                         mov ebx, barracenterx
+                        ;se o centro da bola é maior/menor q o centro da barra
+                        ;a direção será determinada
                         .if ballcenterx < ebx
                             mov eax, movimentoX
                             neg eax
@@ -231,7 +240,24 @@ WndProc proc hWin:DWORD, uMsg:DWORD, wParam:DWORD, lParam:DWORD
         pop edx
 		invoke InvalidateRect,hWnd,NULL,TRUE
     .elseif uMsg == WM_BOLA_BLOCO
-        
+        ;vai ficar verificando se o jogo acabou
+        push ebx
+        push esi
+        mov bl, 0
+        mov esi, 0
+        .WHILE bl < 25
+            .if blocos [esi].break == TRUE
+                add esi, TYPE BLOCO ;vai pro proximo bloco
+                add bl, 1
+            .else
+                .BREAK
+            .endif  
+        .ENDW
+        .if bl == 25
+            invoke Restaura_Blo, hDC 
+        .endif
+        pop esi
+        pop ebx
     .elseif uMsg == WM_DESTROY
     	mov  EventStop,TRUE
         invoke PostQuitMessage,NULL
@@ -269,6 +295,8 @@ Barra_Proc proc hWin:DWORD, hDC:DWORD
 	invoke SelectObject,memDC,hBmp2
     mov hOld, eax    
 
+    ;verifica se o mouse esta nas bordas da tela
+    ;caso esteja, mesmo que o mouse saia da janela, a barra gruda na borda
     .if barraPosMouse.x != NULL
         INVOKE  TransparentBlt,hDC,barraPosMouse.x,barraPos.y,100,16,memDC,0,352,32,32,CREF_TRANSPARENT
     .endif
@@ -305,7 +333,8 @@ Blocos_Proc proc hWin:DWORD, hDC:DWORD
     mov spriteAtual, 384
     .WHILE blocoPos.y <= 130
         .WHILE blocoPos.x <= 400
-            .IF blocos [esi].break == TRUE
+            ;desenha o bloco apenas se este não esta quebrado
+            .IF blocos [esi].break == FALSE
                 INVOKE  TransparentBlt,hDC,blocoPos.x,blocoPos.y,100,16,memDC,0,spriteAtual,32,32,CREF_TRANSPARENT
             .ENDIF
 
@@ -337,10 +366,9 @@ Blocos_Proc endp
 Bola_Proc proc hWin:DWORD, hDC:DWORD
     LOCAL hOld:DWORD
     LOCAL memDC :DWORD
- 
+
     invoke CreateCompatibleDC,hDC
     mov memDC, eax
-    
 	invoke SelectObject,memDC,hBmp2
     mov hOld, eax
 
@@ -348,7 +376,6 @@ Bola_Proc proc hWin:DWORD, hDC:DWORD
 
     invoke SelectObject,hDC,hOld
     invoke DeleteDC,memDC
-
     return 0
 Bola_Proc endp
 
@@ -392,7 +419,7 @@ ThreadCollidProc PROC USES ecx Param:DWORD
     mov bl, 0
     mov esi, 0
     .WHILE bl < 25
-        .if blocos[esi].break == TRUE
+        .if blocos[esi].break == FALSE
             xor eax, eax
             mov eax, bolaPos.x ; bolaPos.x + 16
             add eax, 16
@@ -410,7 +437,7 @@ ThreadCollidProc PROC USES ecx Param:DWORD
                         mov eax, blocos[esi].Y ; blocoPos.y + 16
                         add eax, 16
                         .if bolaPos.y < eax
-                            mov blocos[esi].break, FALSE
+                            mov blocos[esi].break, TRUE
                             ;overL = bola.right - bloco.left
                             mov eax, bolaPos.x
                             add eax, 16
@@ -468,6 +495,8 @@ ThreadCollidProc PROC USES ecx Param:DWORD
                                 mov minOverY, eax
                             .endif
 
+                            ;daq pra baixo ele vai calcular pra que lado a bola vai ir depois da colisão
+                            ;tudo isso comparando os overlaps
                             mov eax, minOverX
                             mov edx, minOverY
                             .if SDWORD PTR eax < 0
@@ -505,10 +534,12 @@ ThreadCollidProc PROC USES ecx Param:DWORD
                                 .if eax < edx
                                     mov eax, movimentoY
                                     mov direcaoY, eax
+                                    call Brick
                                 .else 
                                     mov eax, movimentoY
                                     neg eax
                                     mov direcaoY, eax
+                                    call Brick
                                 .endif
                             .endif
                         .endif
@@ -518,31 +549,42 @@ ThreadCollidProc PROC USES ecx Param:DWORD
         .endif
         add esi, TYPE BLOCO ;vai pro proximo bloco
         add bl, 1
-        invoke InvalidateRect,hWnd,NULL,FALSE
     .ENDW 
-
-    mov bl, 0
-    mov esi, 0
-    .WHILE bl < 25
-        add esi, TYPE BLOCO ;vai pro proximo bloco
-        add bl, 1
-    .ENDW
     
     pop eax
     pop edi
     pop ebx
     pop ecx
     pop edx
-        
+    
+    invoke PostMessage,hWnd,WM_BOLA_BLOCO,NULL,NULL
     jmp   ThreadCollidProc
     ret
 ThreadCollidProc ENDP
 
-Restaura_Blo hWin:DWORD, hDC:DWORD
-    ;push ebx
-    ;push esi
+; #########################################################################
 
-    ;.WHILE
+Restaura_Blo PROC p1:DWORD
+    push ebx
+    push esi
+
+    mov bl, 0
+    mov esi, 0
+    .WHILE bl < 25
+        mov blocos[esi].break, FALSE
+        add esi, TYPE BLOCO ;vai pro proximo bloco
+        add bl, 1
+    .ENDW
+    mov bolaPos.x, 242
+    mov bolaPos.y, 150
+    pop esi
+    pop ebx
+
+    ret
 Restaura_Blo ENDP
 
+; #########################################################################
+
+include TocaSonsProc.asm
+include TocaSonsJogo.asm
 end start

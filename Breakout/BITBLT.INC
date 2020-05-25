@@ -11,12 +11,12 @@
   include \MASM32\INCLUDE\Comctl32.inc
   include \MASM32\INCLUDE\comdlg32.inc
   include \MASM32\INCLUDE\shell32.inc
-
-  INCLUDE \Masm32\Include\msimg32.inc
-  INCLUDE \Masm32\Include\oleaut32.inc
-  INCLUDE \Masm32\Macros\macros.asm
-
-
+  include \MASM32\include\winmm.inc 
+  include \Masm32\Include\msimg32.inc
+  include \Masm32\Include\oleaut32.inc
+  include \Masm32\Macros\macros.asm
+  include dx9macros.inc
+  include dsound9.inc
 
 ;     libraries
 ;     ~~~~~~~~~
@@ -28,11 +28,12 @@
   includelib \MASM32\LIB\Comctl32.lib
   includelib \MASM32\LIB\comdlg32.lib
   includelib \MASM32\LIB\shell32.lib
-
-  INCLUDELIB \Masm32\Lib\msimg32.lib
-  INCLUDELIB \Masm32\Lib\oleaut32.lib
-  INCLUDELIB \Masm32\Lib\msvcrt.lib
-  INCLUDELIB \Masm32\Lib\masm32.lib
+  includelib \MASM32\lib\winmm.lib
+  includelib \Masm32\Lib\msimg32.lib
+  includelib \Masm32\Lib\oleaut32.lib
+  includelib \Masm32\Lib\msvcrt.lib
+  includelib \Masm32\Lib\masm32.lib
+  includelib dsound.lib
 
 ; #########################################################################
 
@@ -46,7 +47,9 @@
   Barra_Proc   PROTO :DWORD,:DWORD
   Blocos_Proc  PROTO :DWORD,:DWORD
   Bola_Proc    PROTO :DWORD,:DWORD
-  Restaura_Blo PROTO :DWORD,:DWORD
+  Restaura_Blo PROTO :DWORD
+  PlaySound    PROTO STDCALL  :DWORD, :DWORD, :DWORD
+  StartDSound  PROTO STDCALL  :DWORD, :DWORD, :DWORD, :DWORD
 
   ;=============
   ; Local macros
@@ -75,6 +78,13 @@
     y  SDWORD ?
   POINTSI ENDS
 
+  align            4
+  g_pDS            LPDIRECTSOUND8        NULL
+  g_pDSWavSample   LPDIRECTSOUNDBUFFER8    NULL
+  String_buffer    db 128 dup (0)
+  OpenFilter       db "Wav files",0,"*.wav",0,0
+  FilenaamPlusPad  db 260 dup(0)
+  Filenaam         db 128 dup(0) 
   szDisplayName db "Atari Breakout",0
   ClassName     db "BreakoutClass",0
   AppName       db "Atari Breakout",0
@@ -90,7 +100,6 @@
 	hThreadBola 	dd 0
   hThreadCollid dd 0
 	hEventStart   dd 0
-  hEvent2Start  dd 0
   spriteAtual   dd      0
   movimentoY    dd      10
   movimentoX    dd      10
@@ -105,18 +114,12 @@
   bolaPos       POINTSI <>
   lRect         RECT    <>
 
-  teste SDWORD 2
-  t3    SDWORD 5
-
-  MsgBoxCaption  db "Iczelion Tutorial No.2",0
-  MsgBoxText     db "Win32 Assembly is Great!",0
-
   BLOCO struct ; STRUCT DE CADA BLOCO
     X     DWORD ? 
     Y     DWORD ?
-    break BOOL TRUE 
+    break BOOL FALSE 
   BLOCO ends
-  blocos      BLOCO 25 DUP(<>) 
+  blocos      BLOCO 25 DUP(<>)
 
 .const
 	IDM_TEST          EQU 1     
