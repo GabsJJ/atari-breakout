@@ -1,0 +1,2 @@
+1 - execute the file 'ajusta.bat' in the cmd in the path of github project
+2 - execute: 'bldallc breakout.asm'
